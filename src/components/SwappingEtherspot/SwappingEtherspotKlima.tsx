@@ -1,6 +1,13 @@
 import { EditOutlined } from '@ant-design/icons'
 import { Web3Provider } from '@ethersproject/providers'
-import { ChainId, Execution, ExecutionSettings, Process } from '@lifi/sdk'
+import {
+  AcceptSlippageUpdateHookParams,
+  ChainId,
+  Execution,
+  ExecutionSettings,
+  Process,
+  Token,
+} from '@lifi/sdk'
 import { useWeb3React } from '@web3-react/core'
 import { Button, Divider, Modal, Row, Space, Spin, Timeline, Tooltip, Typography } from 'antd'
 import { constants } from 'ethers'
@@ -84,6 +91,15 @@ const SwappingEtherspotKlima = ({
     chainId: number
     promiseResolver?: Function
   }>({ show: false, chainId: 1 })
+  const [showAcceptSlippageUpdateModal, setShowAcceptSlippageUpdateModal] = useState<{
+    show: boolean
+    oldToAmount?: string
+    newToAmount?: string
+    toToken?: Token
+    oldSlippage?: number
+    newSlippage?: number
+    promiseResolver?: Function
+  }>({ show: false })
   const [simpleTransferExecution, setSimpleTransferExecution] = useState<Execution>()
   const [transferExecutionError, setTransferExecutionError] = useState<any>()
   // Wallet
@@ -132,8 +148,9 @@ const SwappingEtherspotKlima = ({
     const signer = web3.library.getSigner()
 
     const executionSettings: ExecutionSettings = {
-      updateCallback: updateCallback,
-      switchChainHook: switchChainHook,
+      updateCallback,
+      switchChainHook,
+      acceptSlippageUpdateHook,
       infiniteApproval: settings.infiniteApproval,
     }
     setIsSwapping(true)
@@ -211,6 +228,7 @@ const SwappingEtherspotKlima = ({
     const executionSettings: ExecutionSettings = {
       updateCallback,
       switchChainHook,
+      acceptSlippageUpdateHook,
       infiniteApproval: settings.infiniteApproval,
     }
 
@@ -391,6 +409,29 @@ const SwappingEtherspotKlima = ({
   const finalizeEtherSpotStep = async (stepExecution: Execution) => {
     const amountSKlimaParsed = localRoute.stakingStep.estimate.toAmountMin
     finalizeEtherSpotExecution(stepExecution!, amountSKlimaParsed)
+  }
+  const acceptSlippageUpdateHook = async (
+    params: AcceptSlippageUpdateHookParams,
+    // eslint-disable-next-line max-params
+  ) => {
+    if (!web3.account || !web3.library) return false
+
+    let promiseResolver
+    const awaiter = new Promise<boolean>((resolve) => (promiseResolver = resolve))
+
+    setShowAcceptSlippageUpdateModal({
+      show: true,
+      oldToAmount: params.oldToAmount,
+      newToAmount: params.newToAmount,
+      toToken: params.toToken,
+      oldSlippage: params.oldSlippage,
+      newSlippage: params.newSlippage,
+      promiseResolver,
+    })
+
+    const accept = await awaiter
+
+    return accept
   }
 
   const switchChainHook = async (requiredChainId: number) => {
@@ -665,6 +706,55 @@ const SwappingEtherspotKlima = ({
               })
             }}
           />
+        </Modal>
+        <Modal
+          className="accept-step-update-modal"
+          visible={showAcceptSlippageUpdateModal.show}
+          onOk={() => {
+            if (showAcceptSlippageUpdateModal.promiseResolver) {
+              showAcceptSlippageUpdateModal.promiseResolver(true)
+            }
+            setShowAcceptSlippageUpdateModal({
+              show: false,
+            })
+          }}
+          onCancel={() => {
+            if (showAcceptSlippageUpdateModal.promiseResolver) {
+              showAcceptSlippageUpdateModal.promiseResolver(false)
+            }
+            setShowAcceptSlippageUpdateModal({
+              show: false,
+            })
+          }}>
+          <Typography.Title level={4} style={{ marginBottom: 32 }}>
+            Warning
+          </Typography.Title>
+          <Typography.Paragraph>
+            The conditions of your transaction have changed. Do you accept the recalculated
+            estimates? If you refuse, this transaction will not proceed and no funds will be sent.
+          </Typography.Paragraph>
+          <Typography.Paragraph>
+            old return amount:{' '}
+            {showAcceptSlippageUpdateModal.toToken &&
+              showAcceptSlippageUpdateModal.oldToAmount &&
+              formatTokenAmount(
+                showAcceptSlippageUpdateModal.toToken!,
+                showAcceptSlippageUpdateModal.oldToAmount!,
+              )}{' '}
+            <br />
+            new return amount:{' '}
+            {showAcceptSlippageUpdateModal.toToken &&
+              showAcceptSlippageUpdateModal.newToAmount &&
+              formatTokenAmount(
+                showAcceptSlippageUpdateModal.toToken!,
+                showAcceptSlippageUpdateModal.newToAmount!,
+              )}
+          </Typography.Paragraph>
+
+          <Typography.Paragraph>
+            old slippage: {showAcceptSlippageUpdateModal.oldSlippage! * 100 || '~'} % <br />
+            new slippage: {showAcceptSlippageUpdateModal.newSlippage! * 100 || '~'} %
+          </Typography.Paragraph>
         </Modal>
       </div>
     </>

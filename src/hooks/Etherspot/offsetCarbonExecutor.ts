@@ -1,4 +1,5 @@
 import { Web3Provider } from '@ethersproject/providers'
+import { CoinKey, findDefaultToken } from '@lifi/sdk'
 import { useWeb3React } from '@web3-react/core'
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
@@ -40,12 +41,25 @@ export const useOffsetCarbonExecutor = () =>
       if (!etherspot) {
         throw new Error('Etherspot not initialized.')
       }
+      const TOKEN_POLYGON_USDC = findDefaultToken(CoinKey.USDC, ChainId.POL)
+
+      const amount = new BigNumber(baseAmount)
+
+      const amountUsdc = ethers.BigNumber.from(
+        amount.shiftedBy(TOKEN_POLYGON_USDC.decimals).toString(),
+      )
+      const { feeAmount, txFee } = await getFeeTransferTransactionBasedOnAmount(
+        TOKEN_POLYGON_USDC,
+        ethers.BigNumber.from(baseAmount),
+      )
+      const amountUsdcToMatic = ethers.utils.parseUnits('0.2', TOKEN_POLYGON_USDC.decimals)
+      const amountUsdcToCarbon = amountUsdc.sub(amountUsdcToMatic).sub(feeAmount)
 
       const gasStepRefreshPromise = LiFi.getQuote({
         fromChain: gasStep.action.fromChainId,
         fromToken: gasStep.action.fromToken.address,
         fromAddress: etherspot.state.accountAddress!,
-        fromAmount: gasStep.action.fromAmount, // TODO: check if correct value
+        fromAmount: amountUsdcToMatic.toString(),
         toChain: gasStep.action.fromChainId,
         toToken: gasStep.action.toToken.address, // hardcode return gastoken
         slippage: gasStep.action.slippage,
@@ -56,7 +70,7 @@ export const useOffsetCarbonExecutor = () =>
         fromChain: stakingStep.action.fromChainId,
         fromToken: stakingStep.action.fromToken.address,
         fromAddress: etherspot.state.accountAddress!,
-        fromAmount: stakingStep.action.fromAmount, // TODO: check if correct value
+        fromAmount: amountUsdcToCarbon.toString(),
         toChain: stakingStep.action.fromChainId,
         toToken: stakingStep.action.toToken.address, // hardcode return gastoken
         slippage: gasStep.action.slippage,
@@ -91,10 +105,6 @@ export const useOffsetCarbonExecutor = () =>
         data: gasStep.transactionRequest.data as string,
       })
       // Collect fee
-      const { txFee } = await getFeeTransferTransactionBasedOnAmount(
-        stakingStep.action.fromToken,
-        ethers.BigNumber.from(baseAmount),
-      )
       await etherspot.batchExecuteAccountTransaction({
         to: txFee.to as string,
         data: txFee.data as string,
@@ -121,7 +131,7 @@ export const useOffsetCarbonExecutor = () =>
       const amountBCT = stakingStep.estimate.toAmountMin
       const txOffset = await getOffsetCarbonTransaction({
         address: web3.account!,
-        amountInCarbon: true,
+        amountInCarbon: false,
         quantity: amountBCT,
         inputTokenAddress: gasStep.action.fromToken.address,
         retirementTokenAddress: TOUCAN_BCT_ADDRESS,
