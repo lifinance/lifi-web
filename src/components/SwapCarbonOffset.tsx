@@ -913,18 +913,17 @@ const Swap = () => {
               <Title level={1}>Cross-chain carbon offsets</Title>
             </Col>
             <Col
-              className="swap-form-etherspot"
+              className="swap-form-etherspot swap-form-etherspot-carbon"
               xs={24}
               sm={24}
               md={24}
               lg={24}
               xl={12}
               style={{
-                minHeight: 'calc(100vh - 64px)',
                 backgroundImage: `url(${forest})`,
               }}>
               <div
-                className="swap-input"
+                className="swap-input-etherspot"
                 style={{
                   margin: '0 auto',
                   maxWidth: 450,

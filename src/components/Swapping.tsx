@@ -13,7 +13,12 @@ import { useEffect, useState } from 'react'
 
 import { useStepReturnInfo } from '../hooks/useStepReturnInfo'
 import LiFi from '../LiFi'
-import { isWalletConnectWallet, storeRoute } from '../services/localStorage'
+import {
+  isWalletConnectWallet,
+  readForegroundRoute,
+  storeForegroundRoute,
+  storeRoute,
+} from '../services/localStorage'
 import { switchChain, switchChainAndAddToken } from '../services/metamask'
 import Notification, { NotificationType } from '../services/notifications'
 import {
@@ -71,17 +76,16 @@ const Swapping = ({
 
   useEffect(() => {
     // check if route is eligible for automatic resuming
-    const allDone = localRoute.steps.every((step) => step.execution?.status === 'DONE')
-    const isFailed = localRoute.steps.some((step) => step.execution?.status === 'FAILED')
+    const foregroundRouteID = readForegroundRoute()
 
-    const alreadyStarted = localRoute.steps.some((step) => step.execution)
-    if (!allDone && !isFailed && alreadyStarted) {
-      resumeExecution()
-    }
+    if (!foregroundRouteID) {
+      const allDone = localRoute.steps.every((step) => step.execution?.status === 'DONE')
+      const isFailed = localRoute.steps.some((step) => step.execution?.status === 'FAILED')
 
-    // move execution to background when modal is closed
-    return function cleanup() {
-      LiFi.moveExecutionToBackground(localRoute)
+      const alreadyStarted = localRoute.steps.some((step) => step.execution)
+      if (!allDone && !isFailed && alreadyStarted) {
+        resumeExecution()
+      }
     }
   }, [])
 
@@ -258,6 +262,7 @@ const Swapping = ({
       infiniteApproval: settings.infiniteApproval,
     }
     storeRoute(localRoute)
+    storeForegroundRoute(localRoute)
     setIsSwapping(true)
     setSwapStartedAt(Date.now())
     try {
@@ -287,6 +292,7 @@ const Swapping = ({
     }
 
     setIsSwapping(true)
+    storeForegroundRoute(localRoute)
     try {
       await LiFi.resumeRoute(web3.library.getSigner(), localRoute, executionSettings)
     } catch (e) {
@@ -302,10 +308,6 @@ const Swapping = ({
     setSwapDoneAt(Date.now())
     Notification.showNotification(NotificationType.TRANSACTION_SUCCESSFULL)
     onSwapDone()
-  }
-
-  const restartCrossChainSwap = async () => {
-    resumeExecution()
   }
 
   const switchChainHook = async (requiredChainId: number) => {
@@ -434,7 +436,7 @@ const Swapping = ({
     const isFailed = localRoute.steps.some((step) => step.execution?.status === 'FAILED')
     if (isFailed) {
       return (
-        <Button type="primary" onClick={() => restartCrossChainSwap()} style={{ marginTop: 10 }}>
+        <Button type="primary" onClick={() => resumeExecution()} style={{ marginTop: 10 }}>
           Restart from Failed Step
         </Button>
       )

@@ -137,7 +137,7 @@ function TransactionsTable({
     // we need to make sure to always show the token the user actually received
     const fromChain = getChainById(firstStep.action.fromChainId)
     const toToken = lastStep.execution?.toToken ?? lastStep.action.toToken
-    const toChain = getChainById(lastStep.action.fromChainId)
+    const toChain = getChainById(lastStep.action.toChainId)
     const toAmount = lastStep.execution?.toAmount ?? lastStep.estimate.toAmount
     return {
       key: index,

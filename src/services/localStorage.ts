@@ -115,6 +115,21 @@ const storeRoute = (route: Route) => {
   localStorage.setItem('routes', JSON.stringify(updatedRoutes))
 }
 
+const storeForegroundRoute = (route: Route) => {
+  if (!isSupported()) return
+  localStorage.setItem('foregroundRoute', route.id)
+}
+
+const readForegroundRoute = () => {
+  if (!isSupported()) return
+  const id = localStorage.getItem('foregroundRoute')
+  return id
+}
+
+const resetForegroundRoute = () => {
+  if (!isSupported()) return
+  localStorage.removeItem('foregroundRoute')
+}
 const deleteRoute = (route: Route) => {
   if (!isSupported() || !route) {
     return
@@ -274,13 +289,16 @@ export {
   isWalletConnectWallet,
   readActiveRoutes,
   readDeactivatedWallets,
+  readForegroundRoute,
   readHideAbout,
   readHideDisconnectPopup,
   readHistoricalRoutes,
   readWalletConnectInfo,
   readWallets,
+  resetForegroundRoute,
   sortRoutesByExecutionDate,
   storeDeactivatedWallets,
+  storeForegroundRoute,
   storeHideAbout,
   storeHideDisconnectPopup,
   storeRoute,

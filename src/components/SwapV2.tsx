@@ -3,13 +3,11 @@ import './SwapV2.css'
 import { Token } from '@lifi/sdk'
 import { LiFiWidget, WidgetConfig } from '@lifi/widget'
 import { useWeb3React } from '@web3-react/core'
-import { ethers } from 'ethers'
 import { useMemo, useState } from 'react'
 
 import { useMetatags } from '../hooks/useMetatags'
 import { addChain, switchChain, switchChainAndAddToken } from '../services/metamask'
 import { useStomt } from '../services/stomt'
-import { isWalletActivated } from '../services/utils'
 import { addToDeactivatedWallets, removeFromActiveWallets } from './web3/DisconnectButton'
 import { WalletModal } from './web3/WalletModal'
 
@@ -49,15 +47,6 @@ export const SwapV2 = () => {
           removeFromActiveWallets(account)
           addToDeactivatedWallets(account)
           deactivate()
-        },
-        getSigner: async () => {
-          const selectedAddress = (window as any).ethereum?.selectedAddress
-
-          if (selectedAddress && isWalletActivated(selectedAddress)) {
-            const provider = new ethers.providers.Web3Provider((window as any).ethereum, 'any')
-            return provider.getSigner()
-          }
-          return undefined
         },
         switchChain: async (reqChainId: number) => {
           await switchChain(reqChainId)
